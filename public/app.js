@@ -1,113 +1,102 @@
 const form = document.getElementById('videoForm');
 const submitBtn = document.getElementById('submitBtn');
-const spinner = document.getElementById('spinner');
-const output = document.getElementById('output');
-const errorBox = document.getElementById('errorBox');
-const scriptText = document.getElementById('scriptText');
-const videoIdEl = document.getElementById('videoId');
+const loadingSpinner = document.getElementById('loadingSpinner');
+const outputArea = document.getElementById('outputArea');
+const scriptOutput = document.getElementById('scriptOutput');
+const videoIdOutput = document.getElementById('videoIdOutput');
 const statusBtn = document.getElementById('statusBtn');
-const statusText = document.getElementById('statusText');
-const videoLinkWrap = document.getElementById('videoLinkWrap');
+const statusSpinner = document.getElementById('statusSpinner');
+const finalLinkArea = document.getElementById('finalLinkArea');
 const videoLink = document.getElementById('videoLink');
 
-let activeVideoId = '';
+let currentVideoId = null;
+let pollInterval = null;
 
-function setLoading(isLoading) {
-  submitBtn.disabled = isLoading;
-  spinner.classList.toggle('hidden', !isLoading);
-}
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // UI Loading State
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+    loadingSpinner.classList.remove('hidden');
+    outputArea.classList.add('hidden');
+    finalLinkArea.classList.add('hidden');
+    clearInterval(pollInterval);
 
-function showError(message) {
-  errorBox.textContent = message;
-  errorBox.classList.remove('hidden');
-}
+    const payload = {
+        repName: document.getElementById('repName').value.trim(),
+        customerName: document.getElementById('customerName').value.trim(),
+        vehicle: document.getElementById('vehicle').value.trim(),
+        scenario: document.getElementById('scenario').value
+    };
 
-function clearError() {
-  errorBox.textContent = '';
-  errorBox.classList.add('hidden');
-}
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  const data = await response.json().catch(() => ({}));
+        const data = await response.json();
 
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
-  }
+        if (!data.ok) {
+            alert("Error: " + data.error);
+            return;
+        }
 
-  return data;
-}
+        scriptOutput.textContent = `"${data.script}"`;
+        videoIdOutput.textContent = data.video_id;
+        currentVideoId = data.video_id;
+        outputArea.classList.remove('hidden');
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  clearError();
-  output.classList.add('hidden');
-  statusText.textContent = '';
-  videoLinkWrap.classList.add('hidden');
-
-  const formData = new FormData(form);
-  const payload = {
-    repName: String(formData.get('repName') || '').trim(),
-    customerName: String(formData.get('customerName') || '').trim(),
-    vehicle: String(formData.get('vehicle') || '').trim(),
-    scenario: String(formData.get('scenario') || '').trim()
-  };
-
-  try {
-    setLoading(true);
-
-    const data = await fetchJson('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    activeVideoId = data.video_id;
-    scriptText.textContent = data.script;
-    videoIdEl.textContent = data.video_id;
-    output.classList.remove('hidden');
-  } catch (error) {
-    showError(error.message || 'Unable to generate video.');
-  } finally {
-    setLoading(false);
-  }
-});
-
-statusBtn.addEventListener('click', async () => {
-  clearError();
-
-  if (!activeVideoId) {
-    showError('Generate a video first.');
-    return;
-  }
-
-  statusBtn.disabled = true;
-  statusText.textContent = 'Checking status...';
-
-  const startedAt = Date.now();
-  const timeoutMs = 90_000;
-
-  try {
-    while (Date.now() - startedAt < timeoutMs) {
-      const data = await fetchJson(`/api/generate?video_id=${encodeURIComponent(activeVideoId)}`);
-      const currentStatus = data.status || 'unknown';
-      statusText.textContent = `Status: ${currentStatus}`;
-
-      if (currentStatus === 'completed' && data.video_url) {
-        videoLink.href = data.video_url;
-        videoLink.textContent = data.video_url;
-        videoLinkWrap.classList.remove('hidden');
-        statusText.textContent = 'Status: completed';
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+    } catch (error) {
+        alert("Failed to generate video. Please try again.");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        loadingSpinner.classList.add('hidden');
     }
-
-    statusText.textContent = 'Timed out after 90 seconds. Please check again.';
-  } catch (error) {
-    showError(error.message || 'Unable to check status.');
-  } finally {
-    statusBtn.disabled = false;
-  }
 });
+
+statusBtn.addEventListener('click', () => {
+    if (!currentVideoId) return;
+    
+    statusBtn.disabled = true;
+    statusSpinner.classList.remove('hidden');
+    statusBtn.querySelector('span').textContent = 'Polling...';
+    
+    const startTime = Date.now();
+    const maxDuration = 90000; // 90-second timeout
+    
+    pollInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/api/generate?video_id=${currentVideoId}`);
+            const data = await res.json();
+            
+            if (data.ok && data.status === 'completed') {
+                clearInterval(pollInterval);
+                videoLink.href = data.video_url;
+                finalLinkArea.classList.remove('hidden');
+                resetStatusBtn();
+            } else if (data.ok && data.status === 'failed') {
+                clearInterval(pollInterval);
+                alert("Video generation failed at HeyGen.");
+                resetStatusBtn();
+            }
+            
+            if (Date.now() - startTime > maxDuration) {
+                clearInterval(pollInterval);
+                alert("Status check timed out. The video is still processing.");
+                resetStatusBtn();
+            }
+        } catch (err) {
+            console.error("Polling error:", err);
+        }
+    }, 3000);
+});
+
+function resetStatusBtn() {
+    statusBtn.disabled = false;
+    statusSpinner.classList.add('hidden');
+    statusBtn.querySelector('span').textContent = 'Check Status';
+}
