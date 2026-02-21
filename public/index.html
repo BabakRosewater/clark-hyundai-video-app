@@ -1,78 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clark Hyundai Video Follow-up</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <main class="app-shell">
-      <header class="header">
-        <h1>Clark Hyundai Video Follow-up</h1>
-        <p>Create personalized GM avatar follow-up videos for customers.</p>
-      </header>
-
-      <section class="card">
-        <form id="videoForm" novalidate>
-          <div class="field-grid">
-            <label class="field">
-              <span>Rep Name</span>
-              <input type="text" name="repName" required autocomplete="name" />
-            </label>
-
-            <label class="field">
-              <span>Customer Name</span>
-              <input type="text" name="customerName" required autocomplete="name" />
-            </label>
-
-            <label class="field">
-              <span>Vehicle (optional)</span>
-              <input type="text" name="vehicle" placeholder="2024 Hyundai Tucson" />
-            </label>
-
-            <label class="field">
-              <span>Scenario</span>
-              <select name="scenario" required>
-                <option value="">Select one</option>
-                <option value="sold">Sold</option>
-                <option value="unsold_visit">Unsold Visit</option>
-                <option value="special_finance">Big Sky Fresh Start Approval</option>
-                <option value="service_followup">Service Follow-up</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="actions">
-            <button id="submitBtn" type="submit">Generate Video</button>
-            <div id="spinner" class="spinner hidden" aria-live="polite" aria-label="Loading"></div>
-          </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clark Hyundai Video Follow-Up</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-slate-700">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-blue-400">Clark Hyundai</h1>
+            <p class="text-sm text-slate-400">AI Video Follow-Up</p>
+        </div>
+        
+        <form id="videoForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Rep Name</label>
+                <input type="text" id="repName" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium mb-1">Customer Name</label>
+                <input type="text" id="customerName" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium mb-1">Vehicle (Optional)</label>
+                <input type="text" id="vehicle" placeholder="e.g. 2026 Palisade" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium mb-1">Scenario</label>
+                <select id="scenario" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
+                    <option value="" disabled selected>Select an outcome...</option>
+                    <option value="sold">Sold</option>
+                    <option value="unsold_visit">Unsold Visit</option>
+                    <option value="special_finance">Big Sky Fresh Start Approval</option>
+                    <option value="service_followup">Service Follow-up</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center">
+                <span>Generate Video</span>
+                <div id="loadingSpinner" class="spinner hidden ml-2"></div>
+            </button>
         </form>
-      </section>
 
-      <section id="output" class="card hidden" aria-live="polite">
-        <h2>Result</h2>
-        <div class="result-block">
-          <h3>Generated Script</h3>
-          <p id="scriptText" class="mono"></p>
+        <div id="outputArea" class="mt-6 hidden bg-slate-900 p-4 rounded border border-slate-700">
+            <h3 class="font-bold text-sm text-blue-400 mb-2">Generated Script:</h3>
+            <p id="scriptOutput" class="text-sm text-slate-300 italic mb-4"></p>
+            
+            <h3 class="font-bold text-sm text-blue-400 mb-2">HeyGen Video ID:</h3>
+            <p id="videoIdOutput" class="text-xs font-mono text-slate-400 mb-4"></p>
+            
+            <button id="statusBtn" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center text-sm">
+                <span>Check Status</span>
+                <div id="statusSpinner" class="spinner hidden ml-2"></div>
+            </button>
+            
+            <div id="finalLinkArea" class="mt-4 hidden text-center">
+                <a id="videoLink" href="#" target="_blank" class="text-green-400 hover:text-green-300 font-bold underline">✅ View Completed Video</a>
+            </div>
         </div>
-        <div class="result-block">
-          <h3>Video ID</h3>
-          <p id="videoId" class="mono"></p>
-        </div>
-        <div class="actions">
-          <button id="statusBtn" type="button">Check Status</button>
-          <span id="statusText"></span>
-        </div>
-        <p id="videoLinkWrap" class="hidden">
-          Video URL:
-          <a id="videoLink" target="_blank" rel="noopener noreferrer"></a>
-        </p>
-      </section>
-
-      <section id="errorBox" class="error hidden" aria-live="assertive"></section>
-    </main>
-
-    <script src="/app.js" defer></script>
-  </body>
+    </div>
+    <script src="app.js"></script>
+</body>
 </html>
