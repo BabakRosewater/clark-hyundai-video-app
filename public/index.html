@@ -3,67 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clark Hyundai Video Follow-Up</title>
+    <title>Clark Hyundai AI Follow-Up</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background-color: #0B1120; color: white; }
+        .card { background-color: #1E293B; border-radius: 8px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .input-field { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #475569; background-color: #334155; color: white; }
+        .btn-blue { background-color: #3B82F6; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        .btn-blue:hover { background-color: #2563EB; }
+        .btn-green { background-color: #10B981; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        .btn-green:hover { background-color: #059669; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-slate-700">
-        <div class="text-center mb-6">
-            <h1 class="text-2xl font-bold text-blue-400">Clark Hyundai</h1>
-            <p class="text-sm text-slate-400">AI Video Follow-Up</p>
-        </div>
-        
-        <form id="videoForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium mb-1">Rep Name</label>
-                <input type="text" id="repName" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium mb-1">Customer Name</label>
-                <input type="text" id="customerName" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium mb-1">Vehicle (Optional)</label>
-                <input type="text" id="vehicle" placeholder="e.g. 2026 Palisade" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium mb-1">Scenario</label>
-                <select id="scenario" required class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:ring-blue-500 focus:outline-none text-white">
-                    <option value="" disabled selected>Select an outcome...</option>
-                    <option value="sold">Sold</option>
-                    <option value="unsold_visit">Unsold Visit</option>
-                    <option value="special_finance">Big Sky Fresh Start Approval</option>
-                    <option value="service_followup">Service Follow-up</option>
-                </select>
-            </div>
-            
-            <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center">
-                <span>Generate Video</span>
-                <div id="loadingSpinner" class="spinner hidden ml-2"></div>
-            </button>
-        </form>
+<body class="flex items-center justify-center min-h-screen">
 
-        <div id="outputArea" class="mt-6 hidden bg-slate-900 p-4 rounded border border-slate-700">
-            <h3 class="font-bold text-sm text-blue-400 mb-2">Generated Script:</h3>
-            <p id="scriptOutput" class="text-sm text-slate-300 italic mb-4"></p>
+    <div class="card w-full max-w-md">
+        <h2 class="text-2xl font-bold text-center mb-2 text-blue-400">Clark Hyundai</h2>
+        <p class="text-center text-sm text-gray-400 mb-6">AI Video Follow-Up</p>
+
+        <label class="font-semibold text-sm">Rep Name</label>
+        <input type="text" id="repName" class="input-field" value="Babak Mohammadi">
+
+        <label class="font-semibold text-sm">Customer Name</label>
+        <input type="text" id="customerName" class="input-field" placeholder="e.g. John and Mary">
+
+        <label class="font-semibold text-sm">Vehicle (Optional)</label>
+        <input type="text" id="vehicle" class="input-field" placeholder="e.g. 2024 Tucson">
+
+        <label class="font-semibold text-sm">Scenario</label>
+        <select id="scenario" class="input-field">
+            <option value="Sold">Sold (Thank You)</option>
+            <option value="Walked">Walked (Unsold Visit)</option>
+            <option value="Service">Service Department Visit</option>
+        </select>
+
+        <button onclick="generateScript()" class="btn-blue" id="btn-script">1. Generate Script</button>
+
+        <div id="scriptSection" class="hidden mt-4">
+            <label class="font-semibold text-sm text-yellow-400">Review & Edit Script:</label>
+            <textarea id="finalScriptText" class="input-field mt-1" rows="5"></textarea>
             
-            <h3 class="font-bold text-sm text-blue-400 mb-2">HeyGen Video ID:</h3>
-            <p id="videoIdOutput" class="text-xs font-mono text-slate-400 mb-4"></p>
-            
-            <button id="statusBtn" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center text-sm">
-                <span>Check Status</span>
-                <div id="statusSpinner" class="spinner hidden ml-2"></div>
+            <button onclick="createVideo()" class="btn-green" id="btn-video">2. Send to HeyGen (Create Video)</button>
+        </div>
+
+        <div id="resultBox" class="mt-6 p-4 bg-gray-800 rounded hidden">
+            <p class="text-sm font-bold text-blue-300">HeyGen Video ID:</p>
+            <p id="videoId" class="text-xs text-gray-300 break-all"></p>
+            <button onclick="checkStatus()" id="statusBtn" class="mt-3 w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded">
+                Check Status
             </button>
-            
-            <div id="finalLinkArea" class="mt-4 hidden text-center">
-                <a id="videoLink" href="#" target="_blank" class="text-green-400 hover:text-green-300 font-bold underline">✅ View Completed Video</a>
-            </div>
+            <div id="statusResult" class="mt-2 text-sm font-bold text-center"></div>
         </div>
     </div>
-    <script src="app.js"></script>
+
+    <script>
+        // STEP 1: Get Script from Gemini
+        async function generateScript() {
+            const btn = document.getElementById('btn-script');
+            btn.innerText = "Generating Script...";
+            btn.disabled = true;
+
+            const payload = {
+                action: 'generate_script',
+                repName: document.getElementById('repName').value,
+                customerName: document.getElementById('customerName').value,
+                vehicle: document.getElementById('vehicle').value,
+                scenario: document.getElementById('scenario').value
+            };
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (data.ok) {
+                    // Show the text box and populate it with Gemini's script
+                    document.getElementById('scriptSection').classList.remove('hidden');
+                    document.getElementById('finalScriptText').value = data.script;
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (error) {
+                alert("Request failed: " + error);
+            }
+
+            btn.innerText = "1. Generate Script";
+            btn.disabled = false;
+        }
+
+        // STEP 2: Send Edited Script to HeyGen
+        async function createVideo() {
+            const btn = document.getElementById('btn-video');
+            btn.innerText = "Sending to HeyGen...";
+            btn.disabled = true;
+
+            const payload = {
+                action: 'generate_video',
+                script: document.getElementById('finalScriptText').value // Grab the edited text
+            };
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (data.ok) {
+                    document.getElementById('resultBox').classList.remove('hidden');
+                    document.getElementById('videoId').innerText = data.video_id;
+                    document.getElementById('statusResult').innerText = "";
+                    document.getElementById('statusResult').innerHTML = "";
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (error) {
+                alert("Request failed: " + error);
+            }
+
+            btn.innerText = "2. Send to HeyGen (Create Video)";
+            btn.disabled = false;
+        }
+
+        // Check HeyGen Status (Same as before)
+        async function checkStatus() {
+            const videoId = document.getElementById('videoId').innerText;
+            const statusBtn = document.getElementById('statusBtn');
+            const statusResult = document.getElementById('statusResult');
+
+            statusBtn.innerText = "Polling HeyGen...";
+            statusResult.innerText = "Checking...";
+
+            try {
+                const response = await fetch(`/api/generate?video_id=${videoId}`);
+                const data = await response.json();
+
+                if (data.ok) {
+                    if (data.status === 'completed') {
+                        statusResult.innerHTML = `<a href="${data.video_url}" target="_blank" class="text-green-400 underline">✅ View Completed Video</a>`;
+                        statusBtn.innerText = "Check Status";
+                    } else if (data.status === 'failed') {
+                        statusResult.innerHTML = `<span class="text-red-400">❌ Video Failed (Check HeyGen Dashboard)</span>`;
+                        statusBtn.innerText = "Check Status";
+                    } else {
+                        statusResult.innerText = `Status: ${data.status}... (Click again in 10s)`;
+                        statusBtn.innerText = "Check Status";
+                    }
+                } else {
+                    statusResult.innerText = "Error checking status.";
+                }
+            } catch (error) {
+                statusResult.innerText = "Network error.";
+            }
+        }
+    </script>
 </body>
 </html>
