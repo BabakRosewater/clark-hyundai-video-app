@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clark Hyundai Video Follow-up</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="header">
+        <h1>Clark Hyundai Video Follow-up</h1>
+        <p>Create personalized GM avatar follow-up videos for customers.</p>
+      </header>
+
+      <section class="card">
+        <form id="videoForm" novalidate>
+          <div class="field-grid">
+            <label class="field">
+              <span>Rep Name</span>
+              <input type="text" name="repName" required autocomplete="name" />
+            </label>
+
+            <label class="field">
+              <span>Customer Name</span>
+              <input type="text" name="customerName" required autocomplete="name" />
+            </label>
+
+            <label class="field">
+              <span>Vehicle (optional)</span>
+              <input type="text" name="vehicle" placeholder="2024 Hyundai Tucson" />
+            </label>
+
+            <label class="field">
+              <span>Scenario</span>
+              <select name="scenario" required>
+                <option value="">Select one</option>
+                <option value="sold">Sold</option>
+                <option value="unsold_visit">Unsold Visit</option>
+                <option value="special_finance">Big Sky Fresh Start Approval</option>
+                <option value="service_followup">Service Follow-up</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="submitBtn" type="submit">Generate Video</button>
+            <div id="spinner" class="spinner hidden" aria-live="polite" aria-label="Loading"></div>
+          </div>
+        </form>
+      </section>
+
+      <section id="output" class="card hidden" aria-live="polite">
+        <h2>Result</h2>
+        <div class="result-block">
+          <h3>Generated Script</h3>
+          <p id="scriptText" class="mono"></p>
+        </div>
+        <div class="result-block">
+          <h3>Video ID</h3>
+          <p id="videoId" class="mono"></p>
+        </div>
+        <div class="actions">
+          <button id="statusBtn" type="button">Check Status</button>
+          <span id="statusText"></span>
+        </div>
+        <p id="videoLinkWrap" class="hidden">
+          Video URL:
+          <a id="videoLink" target="_blank" rel="noopener noreferrer"></a>
+        </p>
+      </section>
+
+      <section id="errorBox" class="error hidden" aria-live="assertive"></section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
