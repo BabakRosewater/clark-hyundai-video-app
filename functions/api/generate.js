@@ -1,131 +1,119 @@
 export async function onRequestPost(context) {
-    const { request, env } = context;
-    
-    const SCENARIO_PROMPTS = {
-        "sold": "Role: Assistant to Babak Mohammadi, GM at Clark Hyundai. Task: Write a strict 35-word thank you script for purchasing.",
-        "unsold_visit": "Role: Assistant to Babak Mohammadi, GM at Clark Hyundai. Task: Write a strict 35-word follow-up script for visiting.",
-        "special_finance": "Role: Assistant to Babak Mohammadi, GM at Clark Hyundai. Task: Write a strict 35-word script congratulating the customer on their Big Sky Fresh Start special finance approval.",
-        "service_followup": "Role: Assistant to Babak Mohammadi, GM at Clark Hyundai. Task: Write a strict 35-word script thanking them for using our service drive today."
-    };
+  const { request, env } = context;
+  
+  try {
+    const data = await request.json();
 
-    try {
-        const body = await request.json();
-        const { repName, customerName, vehicle, scenario } = body;
-        
-        if (!repName || !customerName || !scenario || !SCENARIO_PROMPTS[scenario]) {
-            return new Response(JSON.stringify({ ok: false, error: "Invalid input." }), { status: 400 });
-        }
+    // ==========================================
+    // STEP 1: GENERATE SCRIPT (GEMINI)
+    // ==========================================
+    if (data.action === 'generate_script') {
+      const systemInstruction = `You are Babak Mohammadi, General Manager at Clark Hyundai. 
+      Task: Write a strictly 35-word customer follow-up script. 
+      Tone: Highly conversational, warm, and natural. 
+      Rules: Avoid abrupt questions. Use smooth, natural transitions with commas to allow the AI voice to take a 'breath' (e.g., 'So, I just wanted to ask...', 'Now, I'd love to know...', or 'Listen,'). Never include placeholders.`;
 
-        const getGeminiScript = async (sysPrompt, userText) => {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${env.GEMINI_API_KEY}`;
-            const payload = {
-                system_instruction: { parts: [{ text: sysPrompt }] },
-                contents: [{ role: "user", parts: [{ text: userText }] }]
-            };
-            
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            
-            if (!res.ok) throw new Error(`Gemini API error`);
-            const data = await res.json();
-            let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            return rawText.replace(/^["']|["']$/g, '').trim(); 
-        };
+      const userPrompt = `Customer: ${data.customerName}. Vehicle: ${data.vehicle || 'None'}. Scenario: ${data.scenario}. Rep: ${data.repName}.`;
 
-        const baseInstruction = SCENARIO_PROMPTS[scenario] + " Return ONLY the final script text (no JSON, no quotes, no extra commentary).";
-        const userMessage = `Rep: ${repName}\nCustomer: ${customerName}\nVehicle: ${vehicle || "None"}\nScenario: ${scenario}`;
-        
-        // 1. Initial Script Generation
-        let script = await getGeminiScript(baseInstruction, userMessage);
-        
-        // 2. Exact 35-Word Enforcement
-        let wordCount = script.split(/\s+/).filter(w => w.length > 0).length;
-        if (wordCount !== 35) {
-            console.log(`Retry triggered. Word count was ${wordCount}.`); // Safe diagnostic log
-            script = await getGeminiScript(
-                baseInstruction, 
-                userMessage + `\n\nYour previous draft was ${wordCount} words. Rewrite to EXACTLY 35 words. Return only the script.`
-            );
-        }
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+      
+      const geminiResponse = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: { text: systemInstruction } },
+          contents: [{ parts: [{ text: userPrompt }] }]
+        })
+      });
 
-        // 3. HeyGen Video Rendering
-        const heygenUrl = "https://api.heygen.com/v2/video/generate";
-        const heygenPayload = {
-            video_inputs: [{
-                character: {
-                    type: "avatar",
-                    avatar_id: env.AVATAR_ID,
-                    avatar_style: "normal"
-                },
-                voice: {
-                    type: "text",
-                    input_text: script,
-                    voice_id: env.VOICE_ID
-                }
-            }],
-            dimension: { width: 720, height: 1280 }
-        };
+      const geminiData = await geminiResponse.json();
+      let script = geminiData.candidates[0].content.parts[0].text.trim();
+      script = script.replace(/^"|"$/g, ''); // Remove quotes
 
-        const heygenRes = await fetch(heygenUrl, {
-            method: "POST",
-            headers: {
-                "accept": "application/json",
-                "content-type": "application/json",
-                "x-api-key": env.HEYGEN_API_KEY
-            },
-            body: JSON.stringify(heygenPayload)
-        });
-
-        const heygenData = await heygenRes.json();
-        if (heygenData.error) throw new Error(heygenData.error.message || "HeyGen failed.");
-
-        return new Response(JSON.stringify({ 
-            ok: true, 
-            script: script, 
-            video_id: heygenData.data?.video_id 
-        }), {
-            headers: { "Content-Type": "application/json" }
-        });
-
-    } catch (err) {
-        console.error("Generate Route Error:", err.message);
-        return new Response(JSON.stringify({ ok: false, error: "Internal Error" }), { status: 500 });
+      return new Response(JSON.stringify({ ok: true, script: script }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
+
+    // ==========================================
+    // STEP 2: CREATE VIDEO (HEYGEN)
+    // ==========================================
+    if (data.action === 'generate_video') {
+      // Use the exact script the user edited and passed back
+      const finalScript = data.script;
+
+      const heygenUrl = 'https://api.heygen.com/v2/video/generate';
+      const heygenPayload = {
+        video_inputs: [
+          {
+            character: {
+              type: "avatar",
+              avatar_id: env.AVATAR_ID,
+              avatar_style: "normal"
+            },
+            voice: {
+              type: "text",
+              input_text: finalScript,
+              voice_id: env.VOICE_ID,
+              speed: 1.0
+            }
+          }
+        ],
+        dimension: { width: 720, height: 1280 }
+      };
+
+      const heygenResponse = await fetch(heygenUrl, {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': env.HEYGEN_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(heygenPayload)
+      });
+
+      const heygenResult = await heygenResponse.json();
+      
+      if (heygenResult.error) {
+        throw new Error(heygenResult.error.message || 'HeyGen API Error');
+      }
+
+      return new Response(JSON.stringify({ 
+        ok: true, 
+        video_id: heygenResult.data.video_id 
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+  } catch (error) {
+    return new Response(JSON.stringify({ ok: false, error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
+// Keep your existing GET request code at the bottom of the file
 export async function onRequestGet(context) {
-    const { request, env } = context;
-    try {
-        const url = new URL(request.url);
-        const videoId = url.searchParams.get("video_id");
-        
-        if (!videoId) return new Response(JSON.stringify({ ok: false, error: "Missing video_id." }), { status: 400 });
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const videoId = url.searchParams.get('video_id');
 
-        const heygenUrl = `https://api.heygen.com/v1/video_status.get?video_id=${videoId}`;
-        const res = await fetch(heygenUrl, {
-            method: "GET",
-            headers: {
-                "accept": "application/json",
-                "x-api-key": env.HEYGEN_API_KEY
-            }
-        });
+  if (!videoId) {
+    return new Response(JSON.stringify({ ok: false, error: "Missing video_id" }), { status: 400 });
+  }
 
-        const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+  try {
+    const response = await fetch(`https://api.heygen.com/v1/video_status.get?video_id=${videoId}`, {
+      method: 'GET',
+      headers: { 'X-Api-Key': env.HEYGEN_API_KEY }
+    });
 
-        return new Response(JSON.stringify({ 
-            ok: true, 
-            status: data.data?.status, 
-            video_url: data.data?.video_url || null
-        }), {
-            headers: { "Content-Type": "application/json" }
-        });
-
-    } catch (err) {
-        console.error("Status Error:", err.message);
-        return new Response(JSON.stringify({ ok: false, error: "Failed to check status." }), { status: 500 });
-    }
+    const data = await response.json();
+    return new Response(JSON.stringify({ ok: true, status: data.data.status, video_url: data.data.video_url }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 });
+  }
 }
