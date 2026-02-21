@@ -66,7 +66,7 @@ export async function onRequestPost(context) {
                     voice_id: env.VOICE_ID
                 }
             }],
-            dimension: { width: 1280, height: 720 }
+            dimension: { width: 720, height: 1280 }
         };
 
         const heygenRes = await fetch(heygenUrl, {
