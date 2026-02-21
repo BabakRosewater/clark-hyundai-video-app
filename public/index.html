@@ -63,6 +63,12 @@
             btn.innerText = "Generating Script...";
             btn.disabled = true;
 
+            // Reset the Step 2 button & hide old results when starting a new customer
+            const videoBtn = document.getElementById('btn-video');
+            videoBtn.innerText = "2. Send to HeyGen (Create Video)";
+            videoBtn.disabled = false;
+            document.getElementById('resultBox').classList.add('hidden');
+
             const payload = {
                 action: 'generate_script',
                 repName: document.getElementById('repName').value,
@@ -81,7 +87,6 @@
                 const data = await response.json();
                 
                 if (data.ok) {
-                    // Show the text box and populate it with Gemini's script
                     document.getElementById('scriptSection').classList.remove('hidden');
                     document.getElementById('finalScriptText').value = data.script;
                 } else {
@@ -99,11 +104,11 @@
         async function createVideo() {
             const btn = document.getElementById('btn-video');
             btn.innerText = "Sending to HeyGen...";
-            btn.disabled = true;
+            btn.disabled = true; // Lock the button immediately
 
             const payload = {
                 action: 'generate_video',
-                script: document.getElementById('finalScriptText').value // Grab the edited text
+                script: document.getElementById('finalScriptText').value
             };
 
             try {
@@ -120,17 +125,22 @@
                     document.getElementById('videoId').innerText = data.video_id;
                     document.getElementById('statusResult').innerText = "";
                     document.getElementById('statusResult').innerHTML = "";
+                    
+                    // KEEP BUTTON LOCKED AND CHANGE TEXT
+                    btn.innerText = "✅ Sent to HeyGen";
                 } else {
                     alert("Error: " + data.error);
+                    // Only unlock the button if there was an error
+                    btn.innerText = "2. Send to HeyGen (Create Video)";
+                    btn.disabled = false;
                 }
             } catch (error) {
                 alert("Request failed: " + error);
+                // Only unlock the button if there was a network error
+                btn.innerText = "2. Send to HeyGen (Create Video)";
+                btn.disabled = false;
             }
-
-            btn.innerText = "2. Send to HeyGen (Create Video)";
-            btn.disabled = false;
         }
-
         // Check HeyGen Status (Same as before)
         async function checkStatus() {
             const videoId = document.getElementById('videoId').innerText;
