@@ -5,6 +5,16 @@ export async function onRequestPost(context) {
     const data = await request.json();
 
     // ==========================================
+    // SECURITY CHECK: Verify Team Password
+    // ==========================================
+    if (data.password !== env.APP_PASSWORD) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized: Incorrect Team Password." }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ==========================================
     // STEP 1: GENERATE SCRIPT (GEMINI)
     // ==========================================
     if (data.action === 'generate_script') {
