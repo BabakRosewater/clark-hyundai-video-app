@@ -29,11 +29,87 @@ function extractGeminiText(result) {
     return '';
   }
 
-  return parts.map((part) => part?.text || '').join(' ').trim();
+  return parts
+    .map((part) => part?.text || '')
+    .join(' ')
+    .trim();
 }
 
 function wordCount(text) {
-  return text.trim().split(/\s+/).filter(Boolean).length;
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
+function resolveScenario(rawScenario) {
+  const scenario = String(rawScenario || '').trim();
+  if (Object.hasOwn(SCENARIO_PROMPTS, scenario)) {
+    return scenario;
+  }
+
+  const lowered = scenario.toLowerCase();
+  const aliasMap = {
+    'sold': 'sold',
+    'unsold visit': 'unsold_visit',
+    'unsold_visit': 'unsold_visit',
+    'big sky fresh start approval': 'special_finance',
+    'special finance': 'special_finance',
+    'special_finance': 'special_finance',
+    'service follow-up': 'service_followup',
+    'service followup': 'service_followup',
+    'service_followup': 'service_followup'
+  };
+
+  return aliasMap[lowered] || '';
+}
+
+function ensureTeamPassword(body, env) {
+  if (!env.APP_PASSWORD) {
+    return null;
+  }
+
+  if (String(body?.password || '') !== String(env.APP_PASSWORD)) {
+    return jsonResponse({ ok: false, error: 'Unauthorized: Incorrect Team Password.' }, 401);
+  }
+
+  return null;
+}
+
+async function requestGemini({ env, userMessage, systemInstruction }) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userMessage }]
+          }
+        ]
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Gemini request failed:', response.status, errorText.slice(0, 300));
+    throw new Error('Failed to generate script with Gemini.');
+  }
+
+  const data = await response.json();
+  const script = extractGeminiText(data);
+  if (!script) {
+    console.error('Gemini response missing text');
+    throw new Error('Gemini returned an empty script.');
+  }
+
+  return script;
 }
 
 async function generateScript({ env, scenario, repName, customerName, vehicle }) {
@@ -47,56 +123,64 @@ async function generateScript({ env, scenario, repName, customerName, vehicle })
     `Scenario: ${scenarioLabel}`
   ].join('\n');
 
-  async function requestGemini(userMessage, systemInstruction) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemInstruction }]
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: userMessage }]
-            }
-          ]
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini request failed:', response.status, errorText.slice(0, 300));
-      throw new Error('Failed to generate script with Gemini.');
-    }
-
-    const data = await response.json();
-    const script = extractGeminiText(data);
-
-    if (!script) {
-      console.error('Gemini response missing text');
-      throw new Error('Gemini returned an empty script.');
-    }
-
-    return script;
-  }
-
-  let script = await requestGemini(
-    `${userText}\n\nReturn ONLY the final script text for a video. No JSON. No quotes.`,
-    `${baseInstruction} The script must be exactly 35 words.`
-  );
+  let script = await requestGemini({
+    env,
+    userMessage: `${userText}\n\nReturn ONLY the final script text for a video. No JSON. No quotes.`,
+    systemInstruction: `${baseInstruction} The script must be exactly 35 words.`
+  });
 
   if (wordCount(script) !== 35) {
-    script = await requestGemini(
-      `${script}\n\nRewrite to exactly 35 words. Return only the script.`,
-      `${baseInstruction} The script must be exactly 35 words.`
-    );
+    script = await requestGemini({
+      env,
+      userMessage: `${script}\n\nRewrite to exactly 35 words. Return only the script.`,
+      systemInstruction: `${baseInstruction} The script must be exactly 35 words.`
+    });
   }
 
   return script.trim();
+}
+
+async function createHeygenVideo({ env, script }) {
+  const heygenRes = await fetch('https://api.heygen.com/v2/video/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': env.HEYGEN_API_KEY
+    },
+    body: JSON.stringify({
+      video_inputs: [
+        {
+          character: {
+            type: 'avatar',
+            avatar_id: env.AVATAR_ID,
+            avatar_style: 'normal'
+          },
+          voice: {
+            type: 'text',
+            input_text: script,
+            voice_id: env.VOICE_ID,
+            speed: 1.0
+          }
+        }
+      ],
+      dimension: { width: 720, height: 1280 }
+    })
+  });
+
+  if (!heygenRes.ok) {
+    const errorText = await heygenRes.text();
+    console.error('HeyGen generate failed:', heygenRes.status, errorText.slice(0, 300));
+    throw new Error('Failed to start HeyGen video generation.');
+  }
+
+  const heygenData = await heygenRes.json();
+  const videoId = heygenData?.data?.video_id || heygenData?.video_id || heygenData?.data?.id || '';
+  if (!videoId) {
+    console.error('HeyGen response missing video_id');
+    throw new Error('HeyGen did not return a video id.');
+  }
+
+  return videoId;
 }
 
 export async function onRequestPost(context) {
@@ -108,63 +192,59 @@ export async function onRequestPost(context) {
     }
 
     const body = await request.json().catch(() => null);
+    if (!body) {
+      return jsonResponse({ ok: false, error: 'Invalid JSON body.' }, 400);
+    }
+
+    const unauthorized = ensureTeamPassword(body, env);
+    if (unauthorized) {
+      return unauthorized;
+    }
+
+    // Backward-compatible split flow support:
+    // 1) action=generate_script -> return only script
+    // 2) action=generate_video  -> return only video_id from supplied script
+    const action = String(body.action || '').trim();
+    if (action) {
+      if (action === 'generate_script') {
+        const repName = String(body?.repName || '').trim();
+        const customerName = String(body?.customerName || '').trim();
+        const vehicle = String(body?.vehicle || '').trim();
+        const scenario = resolveScenario(body?.scenario);
+
+        if (!repName || !customerName || !scenario) {
+          return jsonResponse({ ok: false, error: 'repName, customerName, and valid scenario are required.' }, 400);
+        }
+
+        const script = await generateScript({ env, scenario, repName, customerName, vehicle });
+        return jsonResponse({ ok: true, script });
+      }
+
+      if (action === 'generate_video') {
+        const script = String(body?.script || '').trim();
+        if (!script) {
+          return jsonResponse({ ok: false, error: 'script is required for generate_video.' }, 400);
+        }
+
+        const videoId = await createHeygenVideo({ env, script });
+        return jsonResponse({ ok: true, video_id: videoId });
+      }
+
+      return jsonResponse({ ok: false, error: 'Invalid action value.' }, 400);
+    }
+
+    // Default single-call flow support:
     const repName = String(body?.repName || '').trim();
     const customerName = String(body?.customerName || '').trim();
     const vehicle = String(body?.vehicle || '').trim();
-    const scenario = String(body?.scenario || '').trim();
+    const scenario = resolveScenario(body?.scenario);
 
     if (!repName || !customerName || !scenario) {
       return jsonResponse({ ok: false, error: 'repName, customerName, and scenario are required.' }, 400);
     }
 
-    if (!Object.hasOwn(SCENARIO_PROMPTS, scenario)) {
-      return jsonResponse({ ok: false, error: 'Invalid scenario value.' }, 400);
-    }
-
     const script = await generateScript({ env, scenario, repName, customerName, vehicle });
-
-    const heygenRes = await fetch('https://api.heygen.com/v2/video/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': env.HEYGEN_API_KEY
-      },
-      body: JSON.stringify({
-        video_inputs: [
-          {
-            character: {
-              type: 'avatar',
-              avatar_id: env.AVATAR_ID,
-              avatar_style: 'normal'
-            },
-            voice: {
-              type: 'text',
-              input_text: script,
-              voice_id: env.VOICE_ID
-            }
-          }
-        ]
-      })
-    });
-
-    if (!heygenRes.ok) {
-      const errorText = await heygenRes.text();
-      console.error('HeyGen generate failed:', heygenRes.status, errorText.slice(0, 300));
-      throw new Error('Failed to start HeyGen video generation.');
-    }
-
-    const heygenData = await heygenRes.json();
-    const videoId =
-      heygenData?.data?.video_id ||
-      heygenData?.video_id ||
-      heygenData?.data?.id ||
-      '';
-
-    if (!videoId) {
-      console.error('HeyGen response missing video_id');
-      throw new Error('HeyGen did not return a video id.');
-    }
-
+    const videoId = await createHeygenVideo({ env, script });
     return jsonResponse({ ok: true, script, video_id: videoId });
   } catch (error) {
     console.error('POST /api/generate failed:', error.message);
