@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clark Hyundai AI Follow-Up</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0B1120; color: white; }
@@ -13,10 +14,99 @@
         .btn-blue:hover { background-color: #2563EB; }
         .btn-green { background-color: #10B981; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
         .btn-green:hover { background-color: #059669; }
+        .custom-scrollbar::-webkit-scrollbar { width: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 999px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
+<button onclick="toggleHub()" class="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-slate-800 transition-all border border-slate-700 shadow-xl z-50">
+        <i data-lucide="layout-grid" class="w-4 h-4 text-blue-400"></i> Hub
+    </button>
 
+    <div id="hubOverlay" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[150] transition-opacity duration-300 opacity-0 pointer-events-none" onclick="toggleHub()"></div>
+
+    <div id="hubDrawer" class="fixed top-0 right-0 h-full w-full max-w-sm bg-white z-[160] shadow-2xl flex flex-col transition-transform duration-500 translate-x-full text-slate-900">
+        <div class="p-8 border-b flex items-center justify-between bg-slate-50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900 leading-none mb-1">Master Index</h3>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cam Clark Sales • Service • Parts</p>
+            </div>
+            <button onclick="toggleHub()" class="p-2 hover:bg-gray-200 rounded-xl text-slate-400" aria-label="Close Hub">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+            <section>
+                <a href="https://sales-service-parts-hub.pages.dev" target="_blank" rel="noreferrer" class="flex items-center gap-4 p-5 bg-blue-50 rounded-3xl border border-blue-100 hover:bg-blue-100 transition-all group">
+                    <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                        <i data-lucide="home" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <span class="text-xs font-black text-blue-600 uppercase tracking-widest block mb-1">Central Launchpad</span>
+                        <span class="text-sm font-bold text-blue-900 group-hover:underline">Main Hub Landing Page</span>
+                    </div>
+                </a>
+            </section>
+
+            <section class="space-y-3">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 text-left">Sales • Inventory • CRM</h4>
+                <div class="grid gap-2">
+                    <a href="https://sales-battle-card.pages.dev/region_incentives/" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="trending-up" class="text-indigo-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Core Incentives Matrix</span>
+                    </a>
+                    <a href="https://clark-inventory-finder.pages.dev" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="search" class="text-blue-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Inventory Finder</span>
+                    </a>
+                    <a href="https://save-a-deal-logic.pages.dev" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="shield-check" class="text-emerald-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Save-A-Deal Logic</span>
+                    </a>
+                    <a href="https://sales-battle-card.pages.dev/daily_training/save-a-deal_activation_framework/" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="zap" class="text-orange-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Activation Framework</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 text-left">Training • Coaching</h4>
+                <div class="grid gap-2">
+                    <a href="https://signature-sales-journey-app.pages.dev" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="graduation-cap" class="text-purple-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Sales Journey Training</span>
+                    </a>
+                    <a href="https://signature-sales-journey-app.pages.dev/data_capture_map/" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="map" class="text-rose-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">CRM Notes Coach</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 text-left">Service Excellence</h4>
+                <div class="grid gap-2">
+                    <a href="https://service-battle-card.pages.dev/" target="_blank" class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all text-left">
+                        <div class="w-5 h-5 flex items-center justify-center"><i data-lucide="wrench" class="text-amber-500"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Service Battle Cards</span>
+                    </a>
+                </div>
+            </section>
+        </div>
+
+        <div class="p-6 bg-slate-50 border-t mt-auto">
+            <div class="p-4 bg-white rounded-2xl border border-slate-200">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">App Status</p>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-[10px] font-bold text-slate-600 uppercase">Operational</span>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="card w-full max-w-md">
         <h2 class="text-2xl font-bold text-center mb-2 text-blue-400">Clark Hyundai</h2>
         <p class="text-center text-sm text-gray-400 mb-6">AI Video Follow-Up</p>
@@ -61,6 +151,21 @@
     </div>
 
     <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Hub Drawer Toggle Logic
+        function toggleHub() {
+            const drawer = document.getElementById('hubDrawer');
+            const overlay = document.getElementById('hubOverlay');
+            
+            // Toggle the drawer sliding in/out
+            drawer.classList.toggle('translate-x-full');
+            
+            // Toggle the overlay fading in/out
+            overlay.classList.toggle('opacity-0');
+            overlay.classList.toggle('pointer-events-none');
+        }
         // STEP 1: Get Script from Gemini
         async function generateScript() {
             const btn = document.getElementById('btn-script');
